@@ -1,28 +1,104 @@
 ---
-about:
-  template: solana
-  id: about-block
-  image: "img/IMG_4131.jpg"
-  links:
-      - icon: linkedin
-        href: https://www.linkedin.com/in/mali-ya-mungu-ocoko-4279aa208/
-      - icon: envelope
-        aria-label: email
-        href: "mailto:mail.mlo38@case.edu"     
+title: "Building a NHANES Health Dashboard: What I Learned About BMI, Income, and Health"
+author: "Mali Ya Mungu Ocoko"
+date: 2026-02-24
+date-format: iso
+format:
+  html:
+    toc: true
+    toc-depth: 3
+categories: [data science, public health, R, Quarto, NHANES]
+image: "preview.png"
 ---
 
-::: {#about-block}
-:::
+## Where It All Started
 
-# Welcome to my website!
+For my biostatistics project, I was tasked with building an interactive dashboard using real public health data and publishing it as part of my personal website. I chose the **NHANES 2017–March 2020 dataset** — a nationally representative survey conducted by the CDC that collects health, nutritional, and demographic information from thousands of Americans.
 
-I am Mali Ocoko, a Ph.D. student in Biomedical Engineering at Case Western Reserve University, working in the Capadona and Hess-Dunning Lab. My research focuses on developing material- and pharmacological-based strategies to mitigate the neuroinflammatory response that arises following intracortical microelectrode implantation.
+The appeal of NHANES is that it's messy, rich, and real. There's no clean spreadsheet handed to you — you pull raw tables, merge them, recode variables, handle missing data, and figure out what story the numbers are actually trying to tell. That process turned out to be just as educational as the analyses themselves.
 
-Through this work, I aim to advance the long-term performance and biocompatibility of neural interfaces by integrating insights from materials science, neurobiology, and drug delivery. My broader interests include translational neuroengineering, biomaterials design, and understanding how tissue–device interactions influence chronic implant outcomes.
+The result was two dashboards — one focused on descriptive statistics (Study 1) and one on regression modeling (Study 2) — both built entirely in R and Quarto and published through GitHub Pages.
 
-```{=html}
-<div  style="margin: 30px; text-align: center;">
-<a class="btn btn-primary" href="https://www.marvinschmitt.com/blog/website-tutorial-quarto/" role="button" target="_blank" style="padding: 15px 30px;">View the tutorial for this template (+ download link)</a>
-</div>
-```
+---
 
+## Study 1: Exploring BMI and Health Markers
+
+### What I was trying to answer
+
+Study 1 was about asking four focused questions of the NHANES data, each using a different statistical method:
+
+- **Analysis B:** Is mean BMI different between males and females?
+- **Analysis C:** Does mean BMI vary across education levels?
+- **Analysis D:** Is high blood pressure diagnosis more common in one sex?
+- **Analysis E:** Is education level associated with race/ethnicity?
+
+Before running any of the analyses, I wrote down my expectations. I thought males might have slightly higher BMI than females. I expected higher education to link to lower BMI based on prior literature. I suspected little difference in blood pressure between sexes. And I was fairly confident education and race/ethnicity would be strongly associated, reflecting well-documented national patterns.
+
+### What I found
+
+The results were both expected and surprising. Females actually averaged about **1 BMI unit higher** than males — the opposite of my guess — and the 90% confidence interval confirmed this was a real, if modest, difference.
+
+For education, the pattern was exactly what I expected: higher education was associated with lower BMI, with college graduates consistently the leanest group across all comparisons in the Tukey HSD test.
+
+High blood pressure prevalence? Almost identical between males and females — all three risk measures (risk difference, risk ratio, odds ratio) sat right at their null values, with confidence intervals straddling zero or one.
+
+And the association between race/ethnicity and education was overwhelming — a chi-square p-value below 2×10⁻¹⁶, with education distributions varying dramatically across groups. That result wasn't surprising, but seeing it so clearly in real data was striking.
+
+### Building the dashboard
+
+The Study 1 dashboard is organized as a multi-page Quarto dashboard with a sidebar on each page showing the method, hypothesis, and sample sizes, and the main area showing the plots and inference tables. One thing I learned quickly: in Quarto dashboards, plain markdown text doesn't render inside cards — everything needs to live inside a code chunk with a `#| title:` tag. That took a few rounds of debugging to figure out.
+
+---
+
+## Study 2: Can Income Predict BMI?
+
+### The research question
+
+Study 2 went deeper. The central question was: **how well does family income-to-poverty ratio predict BMI among U.S. adults, after accounting for age, sex, race/ethnicity, and education?**
+
+My hypothesis going in was that higher income would be associated with slightly lower BMI — consistent with what the literature generally says about socioeconomic status and health. But I also suspected that effect would shrink or disappear once I controlled for other demographic variables, since income is closely tied to education, age, and race/ethnicity.
+
+### The approach
+
+I restricted the dataset to adults aged 20 and older with complete data on BMI and income-to-poverty ratio, giving me **7,214 observations**. I used single imputation with the `mice` package to fill in 3 missing education values (0.04% of the data), then split the data 75/25 into training and test samples.
+
+BMI was right-skewed enough to warrant a log transformation, so I modeled **log(BMI)** throughout.
+
+I built two models:
+
+- **Big model:** log(BMI) ~ income_ratio + age + sex + race/ethnicity + education
+- **Small model:** log(BMI) ~ income_ratio (the naive baseline)
+
+### What I found
+
+The naive small model told one story: higher income is associated with slightly lower BMI, and the relationship is statistically significant. But once I added age, sex, race/ethnicity, and education into the big model, the income coefficient shrank, changed direction, and became statistically meaningless.
+
+In other words, **income-to-poverty ratio has essentially no independent association with BMI** once you account for the demographic variables it's tangled up with. The big model explained about 6% of the variance in log(BMI) — modest but clearly better than the small model's near-zero R².
+
+On the held-out test data, the big model had a lower RMSPE (~7.29 vs ~7.47) and a validated R² of ~0.053 compared to essentially zero for the small model. Not a dramatic difference in raw numbers, but consistently better across every metric.
+
+### Building the dashboard
+
+The Study 2 dashboard has four pages: Outcome & Data, Model Fitting, Diagnostics, and Validation. Each page has a sidebar with key summary tables and a main area with plots. The hardest part was getting the posterior predictive checks and residual diagnostic plots to display cleanly within the dashboard card constraints — `patchwork` was essential for combining multiple ggplots into single outputs.
+
+---
+
+## Reflections on the Process
+
+Building these dashboards taught me a few things I didn't expect:
+
+**Quarto dashboards are opinionated.** The layout system is powerful but requires you to follow its rules precisely. Text-only cards, loose markdown, and old-style chunk syntax all cause silent failures that produce blank pages with no error message. Reading the documentation carefully — and testing incrementally — saved a lot of time.
+
+**Data cleaning is the real analysis.** Getting the NHANES tables merged, variables recoded, impossible values removed, and factors properly labeled took more thought than the statistical tests themselves. Every decision made during cleaning shapes what the analyses can and can't say.
+
+**Income and health are complicated.** The Study 2 result — that income's apparent effect on BMI largely disappears after adjustment — is a good reminder that simple associations in observational data can be misleading. Confounding is everywhere, and regression is one tool for untangling it.
+
+If I were starting over, I'd spend more time upfront thinking about the conceptual relationships between variables before diving into code. And I'd test my dashboard layout with simple placeholder content before adding the real analyses — debugging a complex dashboard with live NHANES data downloads in every chunk is slow.
+
+---
+
+## Try It Yourself
+
+Both dashboards are live on this website — use the **Study 1** and **Study 2** tabs in the navigation bar to explore the analyses interactively. The full reports with all code visible are also available if you want to dig into the methodology.
+
+The data comes directly from NHANES via the `nhanesA` R package, so everything is fully reproducible from scratch.
