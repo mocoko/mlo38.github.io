@@ -18,10 +18,12 @@ website:
         href: cv/index.qmd
       - text: "Projects"
         href: projects/index.qmd
-      - text: "Dashboard"
-        href: dashboard/index.qmd
       - text: "Blog"
         href: blog/index.qmd
+      - text: "Study 1"
+        href: study1/index.qmd
+      - text: "Study 2"
+        href: study2/index.qmd
     
     # your social media handles
     right:

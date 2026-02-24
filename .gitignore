@@ -7,3 +7,5 @@
 .DS_Store_freeze/
 _freeze/
 docs/dashboard/
+
+**/*.quarto_ipynb
